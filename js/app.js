@@ -1,7 +1,7 @@
 /**
  * KEIKAKU UTS STUDY HUB - CORE APPLICATION SCRIPT
  * Full-featured interactive engine for study, flashcards, quizzes, RPS, pomodoro, & audio
- * Strictly aligned with official RPS Jugyou Keikaku order.
+ * Fully optimized for mobile, tablet, and desktop viewports.
  */
 
 // Application State
@@ -81,7 +81,16 @@ function navigateTo(view, moduleId = null) {
     el.classList.toggle('active', el.dataset.view === view && !moduleId);
   });
 
+  // Update Mobile Bottom Nav active state
+  updateMobileNav(view);
+
   renderApp();
+}
+
+function updateMobileNav(tabName) {
+  document.querySelectorAll('.mobile-nav-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.tab === tabName);
+  });
 }
 
 function renderApp() {
@@ -116,6 +125,62 @@ function renderApp() {
 }
 
 // ==========================================================================
+// MOBILE DRAWER & MODAL TOGGLE HANDLERS
+// ==========================================================================
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  if (sb && sb.classList.contains('open')) {
+    closeSidebar();
+  } else {
+    openSidebar();
+  }
+}
+
+function openSidebar() {
+  const sb = document.getElementById('sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  if (sb) sb.classList.add('open');
+  if (bd) bd.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSidebar() {
+  const sb = document.getElementById('sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  if (sb) sb.classList.remove('open');
+  if (bd) bd.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function toggleMobileSearch() {
+  const bar = document.getElementById('mobile-search-bar');
+  if (bar) {
+    bar.classList.toggle('active');
+    if (bar.classList.contains('active')) {
+      const input = bar.querySelector('input');
+      if (input) input.focus();
+    }
+  }
+}
+
+function openFocusModal() {
+  const modal = document.getElementById('focus-modal-backdrop');
+  if (modal) {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeFocusModal(event) {
+  if (event && event.target !== event.currentTarget) return;
+  const modal = document.getElementById('focus-modal-backdrop');
+  if (modal) {
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+}
+
+// ==========================================================================
 // 1. MATERI VIEW (Module Directory - Ordered strictly by RPS)
 // ==========================================================================
 function renderMateriView() {
@@ -135,7 +200,7 @@ function renderMateriView() {
           <div class="module-card" onclick="navigateTo('reading', '${mod.id}')">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
               <span class="card-badge">${mod.rpsWeek} • Modul 0${mod.number}</span>
-              ${isRead ? '<span style="font-size:0.75rem; color:var(--accent-success); font-weight:700;">✓ Selesai Dibaca</span>' : ''}
+              ${isRead ? '<span style="font-size:0.75rem; color:var(--accent-success); font-weight:700;">✓ Selesai</span>' : ''}
             </div>
             <h2 class="card-title">${mod.title}</h2>
             <p class="card-summary">${mod.summary}</p>
@@ -169,14 +234,14 @@ function renderReadingView(moduleId) {
         <button class="reading-back-btn" onclick="navigateTo('materi')">
           ← Kembali ke Daftar Modul
         </button>
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
           <div>
-            <span class="card-badge" style="margin-bottom: 8px;">${mod.rpsWeek} • Modul 0${mod.number}</span>
+            <span class="card-badge" style="margin-bottom: 6px;">${mod.rpsWeek} • Modul 0${mod.number}</span>
             <h1 class="reading-title">${mod.title}</h1>
             <p class="reading-subtitle">${mod.subtitle}</p>
           </div>
-          <button class="btn-control ${isRead ? 'active' : ''}" onclick="toggleMarkAsRead('${mod.id}')">
-            ${isRead ? '✓ Sudah Ditandai Selesai' : 'Tandai Selesai Dibaca'}
+          <button class="btn-control ${isRead ? 'active' : ''}" style="margin-top:6px;" onclick="toggleMarkAsRead('${mod.id}')">
+            ${isRead ? '✓ Ditandai Selesai' : 'Tandai Selesai Dibaca'}
           </button>
         </div>
       </div>
@@ -199,12 +264,12 @@ function renderReadingView(moduleId) {
         </div>
       `).join('')}
 
-      <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+      <div style="margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <button class="btn-control" onclick="navigateTo('materi')">
           ← Semua Modul
         </button>
         <button class="btn-control active" onclick="startFlashcardsForModule('${mod.id}')">
-          Latih Flashcard Modul Ini (${getFlashcardCountForModule(mod.id)} Kartu) →
+          Latih Flashcard (${getFlashcardCountForModule(mod.id)} Kartu) →
         </button>
       </div>
     </div>
@@ -215,13 +280,13 @@ function formatMarkdownLike(text) {
   let html = text
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/^### (.*$)/gim, '<h4 style="font-size:1.15rem; margin:16px 0 8px;">$1</h4>')
-    .replace(/^## (.*$)/gim, '<h3 style="font-size:1.25rem; margin:20px 0 10px;">$1</h3>');
+    .replace(/^### (.*$)/gim, '<h4 style="font-size:1.1rem; margin:16px 0 8px;">$1</h4>')
+    .replace(/^## (.*$)/gim, '<h3 style="font-size:1.2rem; margin:20px 0 10px;">$1</h3>');
 
   if (html.includes('|')) {
     const lines = html.split('\n');
     let inTable = false;
-    let tableHtml = '<table>';
+    let tableHtml = '<div class="table-responsive"><table>';
     let newLines = [];
 
     for (let i = 0; i < lines.length; i++) {
@@ -229,7 +294,7 @@ function formatMarkdownLike(text) {
       if (line.startsWith('|') && line.endsWith('|')) {
         if (!inTable) {
           inTable = true;
-          tableHtml = '<table>';
+          tableHtml = '<div class="table-responsive"><table>';
         }
         if (line.includes('---')) {
           continue;
@@ -245,14 +310,14 @@ function formatMarkdownLike(text) {
       } else {
         if (inTable) {
           inTable = false;
-          tableHtml += '</tbody></table>';
+          tableHtml += '</tbody></table></div>';
           newLines.push(tableHtml);
         }
         newLines.push(line);
       }
     }
     if (inTable) {
-      tableHtml += '</tbody></table>';
+      tableHtml += '</tbody></table></div>';
       newLines.push(tableHtml);
     }
     html = newLines.join('\n');
@@ -267,7 +332,7 @@ function formatMarkdownLike(text) {
       const items = p.split('\n').map(item => `<li>${item.replace(/^\d+\.\s+/, '')}</li>`).join('');
       return `<ol>${items}</ol>`;
     }
-    if (p.trim().startsWith('<table') || p.trim().startsWith('<h')) {
+    if (p.trim().startsWith('<div') || p.trim().startsWith('<h')) {
       return p;
     }
     return `<p>${p.replace(/\n/g, '<br>')}</p>`;
@@ -301,68 +366,98 @@ function updateProgressWidget() {
 }
 
 // ==========================================================================
-// 3. RPS ROADMAP VIEW (Rencana Pembelajaran Semester)
+// 3. RPS ROADMAP VIEW (Dual Mode: Table for Desktop & Cards for Mobile)
 // ==========================================================================
 function renderRpsView() {
   return `
-    <div class="hero-banner" style="padding: 24px 28px; margin-bottom: 24px;">
+    <div class="hero-banner" style="padding: 20px 24px; margin-bottom: 20px;">
       <span class="card-badge" style="background-color:rgba(129,140,248,0.2); color:var(--accent-secondary);">RPS Resmi</span>
-      <h2 style="font-size: 1.55rem; font-weight:800; margin: 8px 0 4px;">Rencana Pembelajaran Semester (RPS)</h2>
-      <p style="font-size: 0.9rem; color: var(--text-secondary);">
-        <strong>${RPS_DATA.mataKuliah}</strong> • ${RPS_DATA.programStudi} • Dosen Pengembang: ${RPS_DATA.dosenPengembang}
+      <h2 style="font-size: 1.45rem; font-weight:800; margin: 6px 0 4px;">Rencana Pembelajaran Semester (RPS)</h2>
+      <p style="font-size: 0.88rem; color: var(--text-secondary);">
+        <strong>${RPS_DATA.mataKuliah}</strong> • ${RPS_DATA.programStudi} • Dosen: ${RPS_DATA.dosenPengembang}
       </p>
     </div>
 
-    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:14px; margin-bottom:28px;">
+    <!-- Assessment Breakdown -->
+    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:10px; margin-bottom:20px;">
       ${RPS_DATA.penilaian.map(item => `
-        <div class="question-card" style="padding:16px 20px; text-align:center;">
-          <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Bobot Penilaian</div>
-          <div style="font-size:1.4rem; font-weight:800; color:var(--accent-primary); margin:4px 0;">${item.bobot}</div>
-          <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">${item.jenis}</div>
+        <div class="question-card" style="padding:12px 14px; text-align:center;">
+          <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">Bobot</div>
+          <div style="font-size:1.25rem; font-weight:800; color:var(--accent-primary); margin:2px 0;">${item.bobot}</div>
+          <div style="font-size:0.82rem; font-weight:600; color:var(--text-primary);">${item.jenis}</div>
         </div>
       `).join('')}
     </div>
 
-    <table class="glossary-table">
-      <thead>
-        <tr>
-          <th style="width: 10%;">Minggu</th>
-          <th style="width: 28%;">Sub-CPMK / Topik Materi</th>
-          <th style="width: 32%;">Indikator & Pengalaman Belajar</th>
-          <th style="width: 10%;">Bobot</th>
-          <th style="width: 20%;">Aksi Modul</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${RPS_DATA.weeks.map(w => {
-          const isUts = w.week === 8;
-          const isBeforeUts = w.week < 8;
-          return `
-            <tr style="${isUts ? 'background-color:rgba(251,191,36,0.1); font-weight:bold;' : ''}">
-              <td style="font-weight:700; color:${isUts ? 'var(--accent-warning)' : 'var(--accent-primary)'};">
+    <!-- Desktop Table View (Wrapped in Responsive Scroll Container) -->
+    <div class="table-responsive rps-desktop-table">
+      <table class="glossary-table">
+        <thead>
+          <tr>
+            <th style="width: 10%;">Minggu</th>
+            <th style="width: 28%;">Sub-CPMK / Topik Materi</th>
+            <th style="width: 32%;">Indikator & Pengalaman Belajar</th>
+            <th style="width: 10%;">Bobot</th>
+            <th style="width: 20%;">Aksi Modul</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${RPS_DATA.weeks.map(w => {
+            const isUts = w.week === 8;
+            return `
+              <tr style="${isUts ? 'background-color:rgba(251,191,36,0.1); font-weight:bold;' : ''}">
+                <td style="font-weight:700; color:${isUts ? 'var(--accent-warning)' : 'var(--accent-primary)'};">
+                  Minggu ${w.week}
+                </td>
+                <td>
+                  <div style="font-weight:700; color:var(--text-primary); margin-bottom:4px;">${w.title}</div>
+                  <div style="font-size:0.82rem; color:var(--text-secondary); line-height:1.4;">${w.subCpmk}</div>
+                </td>
+                <td>
+                  <div style="font-size:0.84rem; color:var(--text-secondary); margin-bottom:4px;">${w.indikator}</div>
+                  <span class="tag-pill">${w.metode}</span>
+                </td>
+                <td style="font-weight:700; color:var(--accent-secondary);">${w.bobot}</td>
+                <td>
+                  ${w.moduleId ? `
+                    <button class="btn-control" style="padding:4px 8px; font-size:0.75rem;" onclick="navigateTo('reading', '${w.moduleId}')">
+                      Buka Modul →
+                    </button>
+                  ` : `<span class="tag-pill" style="background-color:rgba(251,191,36,0.2); color:var(--accent-warning);">${w.status}</span>`}
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile Cards View (Rendered specifically for phone screens!) -->
+    <div class="rps-mobile-cards">
+      ${RPS_DATA.weeks.map(w => {
+        const isUts = w.week === 8;
+        return `
+          <div class="rps-mobile-card" style="${isUts ? 'border-color:var(--accent-warning); background:rgba(251,191,36,0.06);' : ''}">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span class="card-badge" style="background-color:${isUts ? 'rgba(251,191,36,0.2)' : 'rgba(56,189,248,0.15)'}; color:${isUts ? 'var(--accent-warning)' : 'var(--accent-primary)'}; margin:0;">
                 Minggu ${w.week}
-              </td>
-              <td>
-                <div style="font-weight:700; color:var(--text-primary); margin-bottom:4px;">${w.title}</div>
-                <div style="font-size:0.82rem; color:var(--text-secondary); line-height:1.4;">${w.subCpmk}</div>
-              </td>
-              <td>
-                <div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:4px;">${w.indikator}</div>
-                <span class="tag-pill">${w.metode}</span>
-              </td>
-              <td style="font-weight:700; color:var(--accent-secondary);">${w.bobot}</td>
-              <td>
-                ${w.moduleId ? `
-                  <button class="btn-control" style="padding:5px 10px; font-size:0.78rem;" onclick="navigateTo('reading', '${w.moduleId}')">
-                    Buka Modul →
-                  </button>
-                ` : `<span class="tag-pill" style="background-color:rgba(251,191,36,0.2); color:var(--accent-warning);">${w.status}</span>`}
-              </td>
-            </tr>
-          `;
-        }).join('')}
-      </tbody>
-    </table>
+              </span>
+              <span style="font-size:0.8rem; font-weight:700; color:var(--accent-secondary);">${w.bobot}</span>
+            </div>
+            <div style="font-weight:700; font-size:0.98rem; margin-bottom:6px; color:var(--text-primary); line-height:1.35;">${w.title}</div>
+            <div style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:10px; line-height:1.45;">${w.subCpmk}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:8px; gap:8px;">
+              <span class="tag-pill" style="font-size:0.68rem;">${w.metode}</span>
+              ${w.moduleId ? `
+                <button class="btn-control" style="padding:4px 10px; font-size:0.76rem;" onclick="navigateTo('reading', '${w.moduleId}')">
+                  Buka Modul →
+                </button>
+              ` : `<span class="tag-pill" style="color:var(--accent-warning); font-size:0.7rem;">${w.status}</span>`}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
   `;
 }
 
@@ -389,10 +484,10 @@ function renderFlashcardsView() {
 
   return `
     <div class="flashcard-wrapper">
-      <div class="hero-banner" style="padding: 20px 24px; margin-bottom: 24px;">
-        <h2 style="font-size: 1.4rem; font-weight:800; margin-bottom: 4px;">🎴 Flashcard Interaktif Keikaku</h2>
-        <p style="font-size: 0.88rem; color: var(--text-secondary);">
-          Kuasai terminologi, PROTA/PROSEM, metodologi, dan pilar survei dengan cepat. Klik kartu atau tekan Spasi untuk membalik jawaban.
+      <div class="hero-banner" style="padding: 16px 20px; margin-bottom: 16px;">
+        <h2 style="font-size: 1.3rem; font-weight:800; margin-bottom: 4px;">🎴 Flashcard Interaktif Keikaku</h2>
+        <p style="font-size: 0.84rem; color: var(--text-secondary);">
+          Kuasai terminologi, PROTA/PROSEM, metodologi, dan pilar survei. Ketuk kartu untuk membalik jawaban.
         </p>
       </div>
 
@@ -408,7 +503,7 @@ function renderFlashcardsView() {
 
         <span class="flashcard-counter">
           Kartu ${state.flashcardIndex + 1} dari ${state.flashcardDeck.length}
-          ${isMastered ? '<span style="color:var(--accent-success); margin-left:8px;">★ Dikuasai</span>' : ''}
+          ${isMastered ? '<span style="color:var(--accent-success); margin-left:6px;">★ Paham</span>' : ''}
         </span>
       </div>
 
@@ -424,7 +519,7 @@ function renderFlashcardsView() {
               ${current.front}
             </div>
             <div class="card-hint">
-              👆 Klik atau tekan <strong>[Spasi]</strong> untuk melihat jawaban
+              👆 Ketuk kartu untuk melihat jawaban
             </div>
           </div>
 
@@ -438,7 +533,7 @@ function renderFlashcardsView() {
               ${current.back}
             </div>
             <div class="card-hint">
-              Gunakan tombol di bawah untuk menilai pemahaman Anda
+              Gunakan tombol di bawah untuk menilai pemahaman
             </div>
           </div>
         </div>
@@ -446,20 +541,18 @@ function renderFlashcardsView() {
 
       <div class="flashcard-actions">
         <button class="btn-card-action btn-repeat" onclick="markCardRepeat('${current.id}')" title="Ulangi lagi nanti">
-          ↻ Belum Hafal [←]
+          ↻ Belum Paham
         </button>
         <button class="btn-card-action btn-flip" onclick="flipFlashcard()">
-          Balik Kartu [Spasi]
+          Balik Kartu
         </button>
         <button class="btn-card-action btn-mastered" onclick="markCardMastered('${current.id}')" title="Sudah mengerti dengan baik">
-          ✓ Sudah Paham [→]
+          ✓ Sudah Paham
         </button>
       </div>
 
-      <div style="display:flex; justify-content:center; gap:24px; margin-top:24px; font-size:0.85rem; color:var(--text-muted);">
+      <div style="display:flex; justify-content:center; gap:16px; margin-top:16px; font-size:0.8rem; color:var(--text-muted);">
         <span>Total Dikuasai: <strong style="color:var(--accent-success);">${state.masteredCards.size}</strong> kartu</span>
-        <span>•</span>
-        <span>Pintasan: [←] Belum Paham | [Spasi] Balik | [→] Sudah Paham</span>
       </div>
     </div>
   `;
@@ -535,21 +628,20 @@ function renderQuizzesView() {
   const readinessPct = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
 
   return `
-    <div class="hero-banner" style="padding: 24px 28px; margin-bottom: 24px;">
-      <h2 style="font-size: 1.5rem; font-weight:800; margin-bottom: 6px;">📝 Latihan Soal & Simulasi Ujian UTS</h2>
-      <p style="font-size: 0.9rem; color: var(--text-secondary);">
+    <div class="hero-banner" style="padding: 20px 24px; margin-bottom: 20px;">
+      <h2 style="font-size: 1.45rem; font-weight:800; margin-bottom: 4px;">📝 Latihan Soal & Simulasi Ujian UTS</h2>
+      <p style="font-size: 0.88rem; color: var(--text-secondary);">
         Soal latihan pilihan ganda dan studi kasus esai yang diurutkan menurut RPS resmi Minggu 1 sampai Minggu 7.
       </p>
     </div>
 
     <div class="quiz-header-bar">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <label style="font-size:0.88rem; font-weight:600; color:var(--text-secondary);">Filter Modul:</label>
-        <select class="deck-filter-select" onchange="changeQuizFilter(this.value)">
-          <option value="all" ${state.quizFilter === 'all' ? 'selected' : ''}>Simulasi Lengkap Semua Modul (${QUIZZES_DATA.mcqs.length} Soal)</option>
+      <div style="display:flex; align-items:center; gap:10px; width:100%; max-width:400px;">
+        <select class="deck-filter-select" style="width:100%; max-width:100%;" onchange="changeQuizFilter(this.value)">
+          <option value="all" ${state.quizFilter === 'all' ? 'selected' : ''}>Semua Modul (${QUIZZES_DATA.mcqs.length} Soal)</option>
           ${MATERIALS_DATA.map(m => `
             <option value="${m.id}" ${state.quizFilter === m.id ? 'selected' : ''}>
-              ${m.rpsWeek}: ${m.title.substring(0, 30)}...
+              ${m.rpsWeek}: ${m.title.substring(0, 28)}...
             </option>
           `).join('')}
         </select>
@@ -562,12 +654,12 @@ function renderQuizzesView() {
     </div>
 
     <!-- TAB PILIHAN GANDA VS STUDI KASUS -->
-    <div style="display:flex; gap:10px; margin-bottom:24px;">
+    <div style="display:flex; gap:8px; margin-bottom:20px; overflow-x:auto;">
       <button class="btn-control active" id="btn-tab-mcq" onclick="showQuizTab('mcq')">
-        Soal Pilihan Ganda (${filteredMcqs.length})
+        Pilihan Ganda (${filteredMcqs.length})
       </button>
       <button class="btn-control" id="btn-tab-essay" onclick="showQuizTab('essay')">
-        Studi Kasus Analisis & Esai (${QUIZZES_DATA.essays.length})
+        Studi Kasus Esai (${QUIZZES_DATA.essays.length})
       </button>
     </div>
 
@@ -620,33 +712,33 @@ function renderQuizzesView() {
     <div id="quiz-tab-essay-content" class="quiz-container" style="display:none;">
       ${QUIZZES_DATA.essays.map((essay, idx) => `
         <div class="essay-card">
-          <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
             <span class="card-badge">Studi Kasus 0${idx + 1}</span>
-            <span style="font-size:0.8rem; color:var(--accent-secondary); font-weight:600;">Soal Analisis UTS</span>
+            <span style="font-size:0.78rem; color:var(--accent-secondary); font-weight:600;">Esai UTS</span>
           </div>
-          <h3 style="font-size:1.2rem; font-weight:700; margin-bottom:12px;">${essay.title}</h3>
+          <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:10px;">${essay.title}</h3>
           
           <div class="essay-scenario">
             <strong>Skenario Kasus:</strong><br>
             ${essay.scenario}
           </div>
 
-          <div style="font-weight:600; margin:16px 0 10px; color:var(--text-primary); white-space:pre-line;">
+          <div style="font-weight:600; font-size:0.92rem; margin:14px 0 10px; color:var(--text-primary); white-space:pre-line;">
             <strong>Pertanyaan Ujian:</strong><br>
             ${essay.question}
           </div>
 
-          <div style="margin: 16px 0;">
+          <div style="margin: 14px 0;">
             <button class="btn-control" onclick="toggleModelAnswer('answer-${essay.id}')">
-              💡 Buka Kunci Jawaban Model & Rubrik Penilaian
+              💡 Buka Kunci Jawaban Model
             </button>
           </div>
 
           <div class="model-answer-box" id="answer-${essay.id}">
-            <div style="font-weight:700; color:var(--accent-primary); margin-bottom:10px;">
-              Kunci Jawaban Ideal & Pembahasan Komprehensif:
+            <div style="font-weight:700; color:var(--accent-primary); margin-bottom:8px;">
+              Kunci Jawaban Ideal & Pembahasan:
             </div>
-            <div style="font-size:0.92rem; line-height:1.7; color:var(--text-primary); white-space:pre-line;">
+            <div style="font-size:0.9rem; line-height:1.7; color:var(--text-primary); white-space:pre-line;">
               ${essay.modelAnswer}
             </div>
           </div>
@@ -698,37 +790,39 @@ function toggleModelAnswer(elementId) {
 // ==========================================================================
 function renderGlossaryView() {
   return `
-    <div class="hero-banner" style="padding: 24px 28px; margin-bottom: 24px;">
-      <h2 style="font-size: 1.5rem; font-weight:800; margin-bottom: 6px;">📖 Kamus Istilah Keikaku & Linguistik</h2>
-      <p style="font-size: 0.9rem; color: var(--text-secondary);">
-        Daftar lengkap 38 istilah teknis, kanji bahasa Jepang, dan konsep pedagogis yang sering keluar di soal ujian UTS.
+    <div class="hero-banner" style="padding: 20px 24px; margin-bottom: 20px;">
+      <h2 style="font-size: 1.45rem; font-weight:800; margin-bottom: 4px;">📖 Kamus Istilah Keikaku & Linguistik</h2>
+      <p style="font-size: 0.88rem; color: var(--text-secondary);">
+        Daftar 38 istilah teknis, kanji bahasa Jepang, dan konsep pedagogis yang sering keluar di soal ujian UTS.
       </p>
     </div>
 
-    <div style="margin-bottom: 18px;">
-      <input type="text" class="search-input" id="glossary-filter-input" placeholder="Ketik istilah atau konsep untuk memfilter..." onkeyup="filterGlossaryTable(this.value)">
+    <div style="margin-bottom: 16px;">
+      <input type="text" class="search-input" id="glossary-filter-input" placeholder="Ketik istilah untuk memfilter..." onkeyup="filterGlossaryTable(this.value)">
     </div>
 
-    <table class="glossary-table">
-      <thead>
-        <tr>
-          <th style="width: 24%;">Istilah (Term)</th>
-          <th style="width: 20%;">Kanji / Katakana</th>
-          <th style="width: 16%;">Kategori</th>
-          <th>Definisi Pedagogis</th>
-        </tr>
-      </thead>
-      <tbody id="glossary-table-body">
-        ${GLOSSARY_DATA.map(item => `
-          <tr class="glossary-row">
-            <td class="glossary-term">${item.term}</td>
-            <td class="glossary-kanji">${item.kanji}</td>
-            <td><span class="tag-pill">${item.category}</span></td>
-            <td style="font-size:0.9rem; color:var(--text-secondary);">${item.definition}</td>
+    <div class="table-responsive">
+      <table class="glossary-table">
+        <thead>
+          <tr>
+            <th style="width: 25%;">Istilah</th>
+            <th style="width: 20%;">Kanji</th>
+            <th style="width: 15%;">Kategori</th>
+            <th>Definisi</th>
           </tr>
-        `).join('')}
-      </tbody>
-    </table>
+        </thead>
+        <tbody id="glossary-table-body">
+          ${GLOSSARY_DATA.map(item => `
+            <tr class="glossary-row">
+              <td class="glossary-term">${item.term}</td>
+              <td class="glossary-kanji">${item.kanji}</td>
+              <td><span class="tag-pill">${item.category}</span></td>
+              <td style="font-size:0.88rem; color:var(--text-secondary);">${item.definition}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -745,21 +839,21 @@ function filterGlossaryTable(query) {
 // ==========================================================================
 function renderCheatsheetView() {
   return `
-    <div class="hero-banner" style="padding: 24px 28px; margin-bottom: 28px;">
+    <div class="hero-banner" style="padding: 20px 24px; margin-bottom: 20px;">
       <span class="card-badge" style="background-color:rgba(251,191,36,0.2); color:var(--accent-warning);">⚡ Ringkasan Kilat</span>
-      <h2 style="font-size: 1.55rem; font-weight:800; margin: 8px 0 4px;">Poin Kunci Kilat UTS (Cheatsheet)</h2>
-      <p style="font-size: 0.9rem; color: var(--text-secondary);">
+      <h2 style="font-size: 1.45rem; font-weight:800; margin: 6px 0 4px;">Poin Kunci Kilat UTS (Cheatsheet)</h2>
+      <p style="font-size: 0.88rem; color: var(--text-secondary);">
         Matriks ringkas rumus materi, singkatan penting, dan istilah kunci yang wajib dihafal sebelum masuk ruang ujian UTS.
       </p>
     </div>
 
-    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:20px; margin-bottom:40px;">
+    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:16px; margin-bottom:40px;">
       
       <!-- Card 1 -->
       <div class="question-card">
         <div class="card-badge">Minggu 1</div>
-        <h3 style="font-size:1.15rem; color:var(--accent-primary); margin-bottom:12px;">1. Paradigma & Psikolinguistik</h3>
-        <ul style="padding-left:20px; font-size:0.92rem; line-height:1.7;">
+        <h3 style="font-size:1.1rem; color:var(--accent-primary); margin-bottom:10px;">1. Paradigma & Psikolinguistik</h3>
+        <ul style="padding-left:18px; font-size:0.88rem; line-height:1.65;">
           <li><strong>Struktural vs Komunikatif:</strong> Language usage (rumus mati) vs Language use (interaksi fungsional).</li>
           <li><strong>Interlanguage:</strong> Sistem bahasa transisi mandiri siswa (kesalahan adalah bukti berpikir).</li>
           <li><strong>Fosilisasi:</strong> Kesalahan membeku permanen akibat tiada corrective feedback.</li>
@@ -771,8 +865,8 @@ function renderCheatsheetView() {
       <!-- Card 2 -->
       <div class="question-card">
         <div class="card-badge">Minggu 2-3</div>
-        <h3 style="font-size:1.15rem; color:var(--accent-primary); margin-bottom:12px;">2. Kurikulum Merdeka & JF Standard</h3>
-        <ul style="padding-left:20px; font-size:0.92rem; line-height:1.7;">
+        <h3 style="font-size:1.1rem; color:var(--accent-primary); margin-bottom:10px;">2. Kurikulum Merdeka & JF Standard</h3>
+        <ul style="padding-left:18px; font-size:0.88rem; line-height:1.65;">
           <li><strong>Target Fase F:</strong> Level A2.1 (Basic User) JF Standard.</li>
           <li><strong>Prinsip Can-Do:</strong> Mengukur apa yang mampu <em>dilakukan</em> dengan bahasa Jepang di situasi riil.</li>
           <li><strong>Hierarki:</strong> Capaian Pembelajaran (CP) $\\rightarrow$ Tujuan Pembelajaran (TP) $\\rightarrow$ Alur Tujuan Pembelajaran (ATP).</li>
@@ -783,8 +877,8 @@ function renderCheatsheetView() {
       <!-- Card 3 -->
       <div class="question-card">
         <div class="card-badge">Minggu 4</div>
-        <h3 style="font-size:1.15rem; color:var(--accent-primary); margin-bottom:12px;">3. 4 Pilar Survei Course Design</h3>
-        <ul style="padding-left:20px; font-size:0.92rem; line-height:1.7;">
+        <h3 style="font-size:1.1rem; color:var(--accent-primary); margin-bottom:10px;">3. 4 Pilar Survei Course Design</h3>
+        <ul style="padding-left:18px; font-size:0.88rem; line-height:1.65;">
           <li><strong>Nīzu (ニーズ):</strong> Kebutuhan (tujuan, situasi, lawan bicara, target JLPT).</li>
           <li><strong>Redinesu (レディネス):</strong> Kesiapan / kemampuan awal (zero beginner vs kisyuu nouryoku).</li>
           <li><strong>Tekisei (適性):</strong> Bakat bahasa (beda bunyi fonemis, tata bahasa, memori).</li>
@@ -795,8 +889,8 @@ function renderCheatsheetView() {
       <!-- Card 4 -->
       <div class="question-card">
         <div class="card-badge">Minggu 5</div>
-        <h3 style="font-size:1.15rem; color:var(--accent-primary); margin-bottom:12px;">4. Teknik Dokkai & Integrasi 4C</h3>
-        <ul style="padding-left:20px; font-size:0.92rem; line-height:1.7;">
+        <h3 style="font-size:1.1rem; color:var(--accent-primary); margin-bottom:10px;">4. Teknik Dokkai & Integrasi 4C</h3>
+        <ul style="padding-left:18px; font-size:0.88rem; line-height:1.65;">
           <li><strong>Seidoku (精読):</strong> Membaca intensif bedah kosakata & gramatika.</li>
           <li><strong>Sokudoku (速読):</strong> Membaca cepat mengambil intisari tanpa kamus.</li>
           <li><strong>Skimming:</strong> Baca sekilas pandang menangkap ide global.</li>
@@ -809,8 +903,8 @@ function renderCheatsheetView() {
       <!-- Card 5 -->
       <div class="question-card">
         <div class="card-badge">Minggu 6</div>
-        <h3 style="font-size:1.15rem; color:var(--accent-primary); margin-bottom:12px;">5. Bahan Ajar vs Media Abad 21</h3>
-        <ul style="padding-left:20px; font-size:0.92rem; line-height:1.7;">
+        <h3 style="font-size:1.1rem; color:var(--accent-primary); margin-bottom:10px;">5. Bahan Ajar vs Media Abad 21</h3>
+        <ul style="padding-left:18px; font-size:0.88rem; line-height:1.65;">
           <li><strong>Bahan Ajar:</strong> Substansi isi pengetahuan (kosakata, teks, dialog).</li>
           <li><strong>Media Pembelajaran:</strong> Alat penyalur (video, LCD, platform Padlet, AI).</li>
           <li><strong>Kamishibai:</strong> Panel gambar dongeng tradisional Jepang.</li>
@@ -821,8 +915,8 @@ function renderCheatsheetView() {
       <!-- Card 6 -->
       <div class="question-card">
         <div class="card-badge">Minggu 7 (Baru)</div>
-        <h3 style="font-size:1.15rem; color:var(--accent-primary); margin-bottom:12px;">6. PROTA & PROSEM</h3>
-        <ul style="padding-left:20px; font-size:0.92rem; line-height:1.7;">
+        <h3 style="font-size:1.1rem; color:var(--accent-primary); margin-bottom:10px;">6. PROTA & PROSEM</h3>
+        <ul style="padding-left:18px; font-size:0.88rem; line-height:1.65;">
           <li><strong>PROTA:</strong> Rencana penetapan alokasi waktu satu tahun ajaran (pedoman induk).</li>
           <li><strong>PROSEM:</strong> Penjabaran rinci materi & alokasi waktu dalam 1 semester.</li>
           <li><strong>Alur Wajib:</strong> PROTA $\\rightarrow$ PROSEM $\\rightarrow$ Modul Ajar (RPP).</li>
@@ -834,9 +928,9 @@ function renderCheatsheetView() {
       <!-- Card 7 -->
       <div class="question-card">
         <div class="card-badge">Minggu 9</div>
-        <h3 style="font-size:1.15rem; color:var(--accent-primary); margin-bottom:12px;">7. Program Literasi (GLS)</h3>
-        <ul style="padding-left:20px; font-size:0.92rem; line-height:1.7;">
-          <li><strong>3 Fase GLS:</strong> Pembiasaan (15 mnt tanpa nilai) $\\rightarrow$ Pengembangan (respons kreatif) $\\rightarrow$ Pembelajaran (terintegrasi nilai).</li>
+        <h3 style="font-size:1.1rem; color:var(--accent-primary); margin-bottom:10px;">7. Program Literasi (GLS)</h3>
+        <ul style="padding-left:18px; font-size:0.88rem; line-height:1.65;">
+          <li><strong>3 Fase GLS:</strong> Pembiasaan (15 mnt tanpa nilai) $\\rightarrow$ Pengembangan $\\rightarrow$ Pembelajaran.</li>
           <li><strong>Ki (起):</strong> Pengenalan topik/masalah.</li>
           <li><strong>Shou (承):</strong> Pengembangan detail.</li>
           <li><strong>Ten (転):</strong> Kejutan / sudut pandang baru / plot twist.</li>
@@ -923,16 +1017,23 @@ function resetPomodoro() {
 }
 
 function updatePomodoroDisplay() {
+  const m = String(state.pomodoroMinutes).padStart(2, '0');
+  const s = String(state.pomodoroSeconds).padStart(2, '0');
+  const timeStr = `${m}:${s}`;
+
   const el = document.getElementById('pomodoro-time');
+  const modalEl = document.getElementById('modal-pomodoro-time');
+  const mobileBadge = document.getElementById('mobile-pomodoro-badge');
   const btn = document.getElementById('pomodoro-toggle-btn');
-  if (el) {
-    const m = String(state.pomodoroMinutes).padStart(2, '0');
-    const s = String(state.pomodoroSeconds).padStart(2, '0');
-    el.textContent = `${m}:${s}`;
-  }
-  if (btn) {
-    btn.textContent = state.pomodoroIsRunning ? 'Pause' : 'Start';
-  }
+  const modalBtn = document.getElementById('modal-pomodoro-toggle');
+
+  if (el) el.textContent = timeStr;
+  if (modalEl) modalEl.textContent = timeStr;
+  if (mobileBadge) mobileBadge.textContent = state.pomodoroIsRunning ? timeStr : 'Focus';
+
+  const btnText = state.pomodoroIsRunning ? 'Pause' : 'Start';
+  if (btn) btn.textContent = btnText;
+  if (modalBtn) modalBtn.textContent = btnText;
 }
 
 function playChime() {
@@ -1003,7 +1104,9 @@ function startAmbientSound() {
     state.isAudioPlaying = true;
 
     const btn = document.getElementById('ambient-sound-btn');
+    const modalBtn = document.getElementById('modal-ambient-btn');
     if (btn) btn.textContent = '🔊 Rain: On';
+    if (modalBtn) modalBtn.textContent = '🔊 Rain: On';
   } catch (err) {}
 }
 
@@ -1017,7 +1120,9 @@ function stopAmbientSound() {
   }
   state.isAudioPlaying = false;
   const btn = document.getElementById('ambient-sound-btn');
+  const modalBtn = document.getElementById('modal-ambient-btn');
   if (btn) btn.textContent = '🔈 Rain: Off';
+  if (modalBtn) modalBtn.textContent = '🔈 Rain: Off';
 }
 
 function handleGlobalSearch(query) {
@@ -1025,6 +1130,10 @@ function handleGlobalSearch(query) {
     navigateTo('materi');
     return;
   }
+  closeSidebar();
+  const mobileBar = document.getElementById('mobile-search-bar');
+  if (mobileBar) mobileBar.classList.remove('active');
+
   navigateTo('glossary');
   setTimeout(() => {
     const input = document.getElementById('glossary-filter-input');
