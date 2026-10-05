@@ -44,9 +44,36 @@ document.addEventListener('DOMContentLoaded', () => {
   applyTheme(state.theme);
   applyFontSize(state.fontSize);
   initDeck();
-  renderApp();
+
+  // Check URL Hash for direct view navigation
+  const hash = window.location.hash.replace(/^#/, '');
+  if (hash) {
+    const parts = hash.split('/');
+    const view = parts[0];
+    const modId = parts[1] || null;
+    if (view) {
+      navigateTo(view, modId, false);
+    } else {
+      renderApp();
+    }
+  } else {
+    renderApp();
+  }
+
   updateProgressWidget();
   setupKeyboardShortcuts();
+});
+
+window.addEventListener('hashchange', () => {
+  const hash = window.location.hash.replace(/^#/, '');
+  if (hash) {
+    const parts = hash.split('/');
+    const view = parts[0];
+    const modId = parts[1] || null;
+    if (view && (view !== state.currentView || modId !== state.currentModuleId)) {
+      navigateTo(view, modId, false);
+    }
+  }
 });
 
 // Theme & Display Settings
@@ -71,9 +98,12 @@ function applyFontSize(size) {
 }
 
 // Router / View Navigation
-function navigateTo(view, moduleId = null) {
+function navigateTo(view, moduleId = null, updateHash = true) {
   state.currentView = view;
   state.currentModuleId = moduleId;
+  if (updateHash) {
+    window.location.hash = moduleId ? `${view}/${moduleId}` : view;
+  }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   // Update Sidebar active state
@@ -234,15 +264,17 @@ function renderReadingView(moduleId) {
         <button class="reading-back-btn" onclick="navigateTo('materi')">
           ← Kembali ke Daftar Modul
         </button>
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
-          <div>
+        <div class="reading-header-row">
+          <div class="reading-header-info">
             <span class="card-badge" style="margin-bottom: 6px;">${mod.rpsWeek} • Modul 0${mod.number}</span>
             <h1 class="reading-title">${mod.title}</h1>
             <p class="reading-subtitle">${mod.subtitle}</p>
           </div>
-          <button class="btn-control ${isRead ? 'active' : ''}" style="margin-top:6px;" onclick="toggleMarkAsRead('${mod.id}')">
-            ${isRead ? '✓ Ditandai Selesai' : 'Tandai Selesai Dibaca'}
-          </button>
+          <div class="reading-header-actions">
+            <button class="btn-control ${isRead ? 'active' : ''}" onclick="toggleMarkAsRead('${mod.id}')">
+              ${isRead ? '✓ Ditandai Selesai' : 'Tandai Selesai Dibaca'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -264,29 +296,51 @@ function renderReadingView(moduleId) {
         </div>
       `).join('')}
 
-      <div style="margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <div class="reading-nav-footer">
         <button class="btn-control" onclick="navigateTo('materi')">
           ← Semua Modul
         </button>
-        <button class="btn-control active" onclick="startFlashcardsForModule('${mod.id}')">
-          Latih Flashcard (${getFlashcardCountForModule(mod.id)} Kartu) →
-        </button>
+        <div class="reading-nav-footer-sub">
+          <button class="btn-control active" onclick="startFlashcardsForModule('${mod.id}')">
+            Latih Flashcard (${getFlashcardCountForModule(mod.id)} Kartu) →
+          </button>
+        </div>
       </div>
     </div>
   `;
 }
 
 function formatMarkdownLike(text) {
-  let html = text
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/^### (.*$)/gim, '<h4 style="font-size:1.1rem; margin:16px 0 8px;">$1</h4>')
-    .replace(/^## (.*$)/gim, '<h3 style="font-size:1.2rem; margin:20px 0 10px;">$1</h3>');
+  if (!text) return '';
 
-  if (html.includes('|')) {
-    const lines = html.split('\n');
+  // 1. Math formulas ($$...$$)
+  let processed = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
+    let cleanFormula = formula
+      .replace(/\\text\{([^}]+)\}/g, '$1')
+      .replace(/\\longrightarrow/g, ' ➔ ')
+      .replace(/\\rightarrow/g, ' ➔ ')
+      .trim();
+    return `\n\n<div class="formula-callout"><span class="formula-icon">📐</span><span class="formula-text">${cleanFormula}</span></div>\n\n`;
+  });
+
+  // Inline math ($\rightarrow$)
+  processed = processed
+    .replace(/\$\\rightarrow\$/g, ' → ')
+    .replace(/\$\\longrightarrow\$/g, ' ⟶ ');
+
+  // 2. Bold text (**...**)
+  processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // 3. Headings (### and ##)
+  processed = processed
+    .replace(/^### (.*$)/gim, '<h4 class="reading-subheading">$1</h4>')
+    .replace(/^## (.*$)/gim, '<h3 class="reading-section-title">$1</h3>');
+
+  // 4. Tables (| ... |)
+  if (processed.includes('|')) {
+    const lines = processed.split('\n');
     let inTable = false;
-    let tableHtml = '<div class="table-responsive"><table>';
+    let tableHtml = '';
     let newLines = [];
 
     for (let i = 0; i < lines.length; i++) {
@@ -294,15 +348,15 @@ function formatMarkdownLike(text) {
       if (line.startsWith('|') && line.endsWith('|')) {
         if (!inTable) {
           inTable = true;
-          tableHtml = '<div class="table-responsive"><table>';
+          tableHtml = '<div class="table-responsive-wrapper"><div class="table-scroll-hint"><span>↔ Geser tabel ke samping</span></div><div class="table-responsive"><table class="reading-table">';
         }
         if (line.includes('---')) {
           continue;
         }
         const cells = line.split('|').filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
-        const tag = tableHtml.includes('<tbody>') ? 'td' : 'th';
+        const isHeader = !tableHtml.includes('<tbody>');
         
-        if (tag === 'th') {
+        if (isHeader) {
           tableHtml += '<thead><tr>' + cells.map(c => `<th>${c.trim()}</th>`).join('') + '</tr></thead><tbody>';
         } else {
           tableHtml += '<tr>' + cells.map(c => `<td>${c.trim()}</td>`).join('') + '</tr>';
@@ -310,35 +364,133 @@ function formatMarkdownLike(text) {
       } else {
         if (inTable) {
           inTable = false;
-          tableHtml += '</tbody></table></div>';
+          tableHtml += '</tbody></table></div></div>\n';
           newLines.push(tableHtml);
+          tableHtml = '';
         }
-        newLines.push(line);
+        newLines.push(lines[i]);
       }
     }
     if (inTable) {
-      tableHtml += '</tbody></table></div>';
+      tableHtml += '</tbody></table></div></div>\n';
       newLines.push(tableHtml);
     }
-    html = newLines.join('\n');
+    processed = newLines.join('\n');
   }
 
-  html = html.split('\n\n').map(p => {
-    if (p.trim().startsWith('* ') || p.trim().startsWith('- ')) {
-      const items = p.split('\n').map(item => `<li>${item.replace(/^[\*\-]\s+/, '')}</li>`).join('');
-      return `<ul>${items}</ul>`;
-    }
-    if (p.trim().startsWith('1. ') || p.trim().startsWith('2. ')) {
-      const items = p.split('\n').map(item => `<li>${item.replace(/^\d+\.\s+/, '')}</li>`).join('');
-      return `<ol>${items}</ol>`;
-    }
-    if (p.trim().startsWith('<div') || p.trim().startsWith('<h')) {
-      return p;
-    }
-    return `<p>${p.replace(/\n/g, '<br>')}</p>`;
-  }).join('');
+  // 5. Separate paragraphs and lists cleanly:
+  // If a line is NOT a list item, but the next line IS a list item, insert a blank line.
+  processed = processed.replace(/^((?!\s*[\*\-]\s+|\s*\d+\.\s+)[^\n]+)\n(\s*[\*\-]\s+|\s*\d+\.\s+)/gm, '$1\n\n$2');
 
-  return html;
+  const rawBlocks = processed.split(/\n\s*\n/);
+  const resultBlocks = [];
+
+  let i = 0;
+  while (i < rawBlocks.length) {
+    let block = rawBlocks[i].trim();
+    if (!block) {
+      i++;
+      continue;
+    }
+
+    // Pass through custom HTML blocks (tables, headings, formula callouts)
+    if (block.startsWith('<div') || block.startsWith('<h3') || block.startsWith('<h4')) {
+      block = block.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+      resultBlocks.push(block);
+      i++;
+      continue;
+    }
+
+    const lines = block.split('\n');
+    const isFirstList = /^\s*[\*\-]\s+/.test(lines[0]) || /^\s*\d+\.\s+/.test(lines[0]);
+
+    if (isFirstList) {
+      // Gather consecutive list blocks that belong together
+      let combinedLines = [...lines];
+      while (i + 1 < rawBlocks.length) {
+        const nextBlock = rawBlocks[i + 1].trim();
+        const nextLines = nextBlock.split('\n');
+        if (/^\s*[\*\-]\s+/.test(nextLines[0]) || /^\s*\d+\.\s+/.test(nextLines[0])) {
+          combinedLines.push(...nextLines);
+          i++;
+        } else {
+          break;
+        }
+      }
+
+      // Build structured nested list
+      let outList = '';
+      let topType = /^\s*\d+\.\s+/.test(combinedLines[0]) ? 'ol' : 'ul';
+      let inTop = false;
+      let inSub = null; // null, 'ul', 'ol'
+
+      for (let line of combinedLines) {
+        if (!line.trim()) continue;
+
+        const isNested = /^\s{2,}/.test(line);
+        const isNum = /^\s*\d+\.\s+/.test(line);
+
+        let content = line
+          .replace(/^\s*[\*\-]\s+/, '')
+          .replace(/^\s*\d+\.\s+/, '')
+          .trim();
+
+        // Apply inline italics safely
+        content = content.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+
+        if (isNested) {
+          const subType = isNum ? 'ol' : 'ul';
+          if (!inSub) {
+            inSub = subType;
+            outList += `<${subType} class="nested-list">`;
+          } else if (inSub !== subType) {
+            outList += `</${inSub}><${subType} class="nested-list">`;
+            inSub = subType;
+          }
+          outList += `<li>${content}</li>`;
+        } else {
+          // Close previous sub-list if open
+          if (inSub) {
+            outList += `</${inSub}></li>`;
+            inSub = null;
+          } else if (inTop) {
+            outList += `</li>`;
+          }
+
+          const currentTopType = isNum ? 'ol' : 'ul';
+          if (!inTop) {
+            topType = currentTopType;
+            outList += `<${topType}>`;
+            inTop = true;
+          } else if (topType !== currentTopType) {
+            outList += `</${topType}><${currentTopType}>`;
+            topType = currentTopType;
+          }
+
+          outList += `<li>${content}`;
+        }
+      }
+
+      if (inSub) {
+        outList += `</${inSub}></li>`;
+      } else if (inTop) {
+        outList += `</li>`;
+      }
+      if (inTop) {
+        outList += `</${topType}>`;
+      }
+
+      resultBlocks.push(outList);
+      i++;
+    } else {
+      // Normal paragraph
+      let pText = block.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+      resultBlocks.push(`<p>${pText.replace(/\n/g, '<br>')}</p>`);
+      i++;
+    }
+  }
+
+  return resultBlocks.join('\n');
 }
 
 function toggleMarkAsRead(moduleId) {
